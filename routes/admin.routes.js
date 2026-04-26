@@ -1,12 +1,30 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
+const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
 const pool = require('../config/database');
 const authMiddleware = require('../middleware/auth');
 const adminMiddleware = require('../middleware/admin');
 const { notifyOrderStatus } = require('../utils/push');
 
+const uploadDir = path.join(__dirname, '..', 'uploads', 'products');
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, uploadDir),
+  filename: (_req, file, cb) => cb(null, `${Date.now()}-${file.originalname.replace(/\s+/g, '_')}`),
+});
+const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
+
 router.use(authMiddleware);
 router.use(adminMiddleware);
+
+router.post('/upload-image', upload.single('image'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No se recibió imagen' });
+  const url = `${req.protocol}://${req.get('host')}/uploads/products/${req.file.filename}`;
+  res.json({ url });
+});
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
 

@@ -21,6 +21,7 @@ app.set('io', io);
 
 app.use(cors());
 app.use(express.json());
+app.use('/uploads', express.static(require('path').join(__dirname, 'uploads')));
 
 pool.query('SELECT 1')
   .then(() => console.log('PostgreSQL conectado'))
