@@ -3,34 +3,10 @@ const bcrypt = require('bcryptjs');
 const pool = require('../config/database');
 const authMiddleware = require('../middleware/auth');
 const adminMiddleware = require('../middleware/admin');
+const { notifyOrderStatus } = require('../utils/push');
 
 router.use(authMiddleware);
 router.use(adminMiddleware);
-
-const STATUS_MESSAGES = {
-  en_preparacion: 'Tu pedido está siendo preparado 👨‍🍳',
-  listo: '¡Tu pedido está listo para entregar! 🎉',
-  en_reparto: '¡Tu pedido va en camino! 🛵',
-  entregado: '¡Tu pedido fue entregado! ✅',
-  cancelado: 'Tu pedido fue cancelado ❌',
-};
-
-async function sendPushNotification(pushToken, body, orderId) {
-  if (!pushToken) return;
-  try {
-    await fetch('https://exp.host/--/api/v2/push/send', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        to: pushToken,
-        sound: 'default',
-        title: 'Pepe Food & Drink 🍔',
-        body,
-        data: { orderId },
-      }),
-    });
-  } catch {}
-}
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
 
@@ -97,13 +73,7 @@ router.put('/orders/:id/status', async (req, res) => {
 
     req.app.get('io').emit('order_status_changed', { id: rows[0].id, status: rows[0].status });
 
-    if (STATUS_MESSAGES[status]) {
-      const userResult = await pool.query(
-        'SELECT push_token FROM users WHERE id = $1',
-        [rows[0].user_id]
-      );
-      sendPushNotification(userResult.rows[0]?.push_token, STATUS_MESSAGES[status], rows[0].id);
-    }
+    notifyOrderStatus(pool, rows[0].id, status);
 
     res.json(rows[0]);
   } catch (err) {

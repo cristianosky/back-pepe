@@ -2,6 +2,7 @@ const router = require('express').Router();
 const pool = require('../config/database');
 const authMiddleware = require('../middleware/auth');
 const roleMiddleware = require('../middleware/role');
+const { notifyOrderStatus } = require('../utils/push');
 
 router.use(authMiddleware);
 router.use(roleMiddleware('admin', 'repartidor'));
@@ -32,6 +33,7 @@ router.put('/orders/:id/pickup', async (req, res) => {
     );
     if (rows.length === 0) return res.status(404).json({ error: 'Pedido no encontrado o no disponible' });
     req.app.get('io').emit('order_status_changed', { id: rows[0].id, status: 'en_reparto' });
+    notifyOrderStatus(pool, rows[0].id, 'en_reparto');
     res.json(rows[0]);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -48,6 +50,7 @@ router.put('/orders/:id/delivered', async (req, res) => {
     );
     if (rows.length === 0) return res.status(404).json({ error: 'Pedido no encontrado o no disponible' });
     req.app.get('io').emit('order_status_changed', { id: rows[0].id, status: 'entregado' });
+    notifyOrderStatus(pool, rows[0].id, 'entregado');
     res.json(rows[0]);
   } catch (err) {
     res.status(400).json({ error: err.message });

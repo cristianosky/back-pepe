@@ -2,6 +2,7 @@ const router = require('express').Router();
 const pool = require('../config/database');
 const authMiddleware = require('../middleware/auth');
 const roleMiddleware = require('../middleware/role');
+const { notifyOrderStatus } = require('../utils/push');
 
 router.use(authMiddleware);
 router.use(roleMiddleware('admin', 'cocinero'));
@@ -34,6 +35,7 @@ router.put('/orders/:id/next', async (req, res) => {
       [next, req.params.id]
     );
     req.app.get('io').emit('order_status_changed', { id: updated[0].id, status: next });
+    notifyOrderStatus(pool, updated[0].id, next);
     res.json(updated[0]);
   } catch (err) {
     res.status(400).json({ error: err.message });

@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const pool = require('../config/database');
 const authMiddleware = require('../middleware/auth');
+const { notifyStaffNewOrder } = require('../utils/push');
 
 router.use(authMiddleware);
 
@@ -33,6 +34,7 @@ router.post('/', async (req, res) => {
       user_email: req.user.email,
       user_phone: req.user.phone,
     });
+    notifyStaffNewOrder(pool, order, req.user.name);
     res.status(201).json(order);
   } catch (err) {
     res.status(400).json({ error: err.message });
